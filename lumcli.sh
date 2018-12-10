@@ -25,6 +25,7 @@ BASH_CLI_OPT_NAME[8]="-n"
 BASH_CLI_OPT_NAME[9]="ssh-connect"
 BASH_CLI_OPT_NAME[10]="-i"
 BASH_CLI_OPT_NAME[11]="tcp-connect"
+BASH_CLI_OPT_NAME[12]="-U"
 
 
 BASH_CLI_OPT_ALT_NAME[0]="Connect"
@@ -39,6 +40,7 @@ BASH_CLI_OPT_ALT_NAME[8]="--object_name"
 BASH_CLI_OPT_ALT_NAME[9]="SshConnect"
 BASH_CLI_OPT_ALT_NAME[10]="--identity"
 BASH_CLI_OPT_ALT_NAME[11]="TcpConnect"
+BASH_CLI_OPT_ALT_NAME[12]="--env_url"
 
 
 BASH_CLI_OPT_DATA_TYPE[0]="cmd"
@@ -53,22 +55,25 @@ BASH_CLI_OPT_DATA_TYPE[8]="string"
 BASH_CLI_OPT_DATA_TYPE[9]="cmd"
 BASH_CLI_OPT_DATA_TYPE[10]="string"
 BASH_CLI_OPT_DATA_TYPE[11]="cmd"
+BASH_CLI_OPT_DATA_TYPE[12]="string"
 
 
 
 
-BASH_CLI_OPT_DESC[0]="Connect to Luminate Management API and generate a session token\n\n\t\t\t\t\tRequired flags:\n\t\t\t\t\t-c <Client ID> or LUMINATE_CLIENT_ID environment variable\n\t\t\t\t\t-s <Client Secret> or LUMINATE_CLIENT_SECRET environment variable"
-BASH_CLI_OPT_DESC[1]="Retrieve list of all sites\n\n\t\t\t\t\tRequired flags:\n\t\t\t\t\t-t <Session Token> or LUMINATE_SESSION_TOKEN environment variable"
-BASH_CLI_OPT_DESC[2]="Retrieve list of all applicatons\n\n\t\t\t\t\tRequired flags:\n\t\t\t\t\t-t <Session Token> or LUMINATE_SESSION_TOKEN environment variable"
+BASH_CLI_OPT_DESC[0]="Connect to Luminate Management API and generate a session token\n\n\t\t\t\t\tRequired flags:\n\t\t\t\t\t-c <Client ID> or LUMINATE_CLIENT_ID environment variable\n\t\t\t\t\t-s <Client Secret> or LUMINATE_CLIENT_SECRET environment variable\n\t\t\t\t\t-U <Luminate Environment URL> or LUMINATE_ENVIRONMENT_URL environment variable"
+BASH_CLI_OPT_DESC[1]="Retrieve list of all sites\n\n\t\t\t\t\tRequired flags:\n\t\t\t\t\t-t <Session Token> or LUMINATE_SESSION_TOKEN environment variable\n\t\t\t\t\t-U <Luminate Environment URL> or LUMINATE_ENVIRONMENT_URL environment variable"
+BASH_CLI_OPT_DESC[2]="Retrieve list of all applicatons\n\n\t\t\t\t\tRequired flags:\n\t\t\t\t\t-t <Session Token> or LUMINATE_SESSION_TOKEN environment variable\n\t\t\t\t\t-U <Luminate Environment URL> or LUMINATE_ENVIRONMENT_URL environment variable"
 BASH_CLI_OPT_DESC[3]="Luminate Management API Client ID"
 BASH_CLI_OPT_DESC[4]="Luminate Management API Client Secret"
 BASH_CLI_OPT_DESC[5]="Luminate Management API Access Token"
-BASH_CLI_OPT_DESC[6]="Get application details\n\n\t\t\t\t\tRequired flags:\n\t\t\t\t\t-t <Session Token> or LUMINATE_SESSION_TOKEN environment variable\n\t\t\t\t\t-n <Application Name> or -o <Application ID>"
+BASH_CLI_OPT_DESC[6]="Get application details\n\n\t\t\t\t\tRequired flags:\n\t\t\t\t\t-t <Session Token> or LUMINATE_SESSION_TOKEN environment variable\n\t\t\t\t\t-n <Application Name> or -o <Application ID>\n\t\t\t\t\t-U <Luminate Environment URL> or LUMINATE_ENVIRONMENT_URL environment variable"
 BASH_CLI_OPT_DESC[7]="ID of the relevant object"
 BASH_CLI_OPT_DESC[8]="Name of the relevant object"
-BASH_CLI_OPT_DESC[9]="Connect to an SSH Server (requires -n argument)"
+BASH_CLI_OPT_DESC[9]="Connect to an SSH Server\n\n\t\t\t\t\tRequired flags:\n\t\t\t\t\t-t <Session Token> or LUMINATE_SESSION_TOKEN environment variable\n\t\t\t\t\t-n <Application Name> or -o <Application ID>\n\t\t\t\t\t-U <Luminate Environment URL> or LUMINATE_ENVIRONMENT_URL environment variable\n\n\t\t\t\t\tOptional flags:\n\t\t\t\t\t-i <Path to Luminate SSH Key in PEM format>"
 BASH_CLI_OPT_DESC[10]="Path to identity file (private key) for public key authentication"
-BASH_CLI_OPT_DESC[11]="Connect to TCP Port maps (requires -n argument)"
+BASH_CLI_OPT_DESC[11]="Connect to TCP Port maps\n\n\t\t\t\t\tRequired flags:\n\t\t\t\t\t-t <Session Token> or LUMINATE_SESSION_TOKEN environment variable\n\t\t\t\t\t-n <Application Name> or -o <Application ID>\n\t\t\t\t\t-U <Luminate Environment URL> or LUMINATE_ENVIRONMENT_URL environment variable\n\n\t\t\t\t\tOptional flags:\n\t\t\t\t\t-i <Path to Luminate SSH Key in PEM format>"
+BASH_CLI_OPT_DESC[12]="Luminate environment URL (such as company.luminatesec.com)"
+
 
 
 
@@ -102,7 +107,19 @@ connect() {
             fi   
       fi
 
-      local curl_output=$(curl -s -X POST --write-out "HTTPSTATUS:%{http_code}" -u "$client_id:$client_secret" "https://api.staging.luminatesite.com/v1/oauth/token")
+
+      local luminate_url=${BASH_CLI_OPT_VALUE[12]}
+      if [ "$luminate_url" == "<undefined>" ]; then
+            if [[ -z "${LUMINATE_ENVIRONMENT_URL}" ]]; then
+                  echo Error: -U argument or LUMINATE_ENVIRONMENT_URL environment variable are required
+                  exit 1
+            else
+                  luminate_url="${LUMINATE_ENVIRONMENT_URL}"
+            fi   
+      fi
+
+
+      local curl_output=$(curl -s -X POST --write-out "HTTPSTATUS:%{http_code}" -u "$client_id:$client_secret" "https://api.$luminate_url/v1/oauth/token")
       #local curl_output='{"access_token":"4a7acefc-f574-49f6-9f0a-d02fa350f551","expires_in":3600,"scope":"sample-scope","token_type":"Bearer","error":"","error_description":""}HTTPSTATUS:200'
     
       # extract the body
@@ -143,7 +160,18 @@ apps-list() {
             fi   
       fi
 
-      local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.staging.luminatesite.com/v2/applications/?size=500)
+      local luminate_url=${BASH_CLI_OPT_VALUE[12]}
+      if [ "$luminate_url" == "<undefined>" ]; then
+            if [[ -z "${LUMINATE_ENVIRONMENT_URL}" ]]; then
+                  echo Error: -U argument or LUMINATE_ENVIRONMENT_URL environment variable are required
+                  exit 1
+            else
+                  luminate_url="${LUMINATE_ENVIRONMENT_URL}"
+            fi   
+      fi      
+
+      # Please note that the return page size is set at 500 applications and we are only checking the first page
+      local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.$luminate_url/v2/applications/?size=500)
 
       # extract the body
       local response_body=$(echo $curl_output | sed -e 's/HTTPSTATUS\:.*//g')
@@ -178,7 +206,17 @@ sites-list() {
             fi   
       fi
 
-      local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.staging.luminatesite.com/v2/sites/)
+      local luminate_url=${BASH_CLI_OPT_VALUE[12]}
+      if [ "$luminate_url" == "<undefined>" ]; then
+            if [[ -z "${LUMINATE_ENVIRONMENT_URL}" ]]; then
+                  echo Error: -U argument or LUMINATE_ENVIRONMENT_URL environment variable are required
+                  exit 1
+            else
+                  luminate_url="${LUMINATE_ENVIRONMENT_URL}"
+            fi   
+      fi      
+
+      local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.$luminate_url/v2/sites/)
 
       # extract the body
       local response_body=$(echo $curl_output | sed -e 's/HTTPSTATUS\:.*//g')
@@ -210,6 +248,16 @@ apps-details() {
                   client_token="${LUMINATE_SESSION_TOKEN}"
             fi   
       fi
+
+      local luminate_url=${BASH_CLI_OPT_VALUE[12]}
+      if [ "$luminate_url" == "<undefined>" ]; then
+            if [[ -z "${LUMINATE_ENVIRONMENT_URL}" ]]; then
+                  echo Error: -U argument or LUMINATE_ENVIRONMENT_URL environment variable are required
+                  exit 1
+            else
+                  luminate_url="${LUMINATE_ENVIRONMENT_URL}"
+            fi   
+      fi      
       
       local app_id=${BASH_CLI_OPT_VALUE[7]}
       local app_name=${BASH_CLI_OPT_VALUE[8]}
@@ -218,7 +266,7 @@ apps-details() {
 
             # Start by filtering for applications by name, and then reducing to exact name
 
-            local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.staging.luminatesite.com/v2/applications/?filter=$app_name)
+            local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.$luminate_url/v2/applications/?filter=$app_name)
 
             # extract the body
             local response_body=$(echo $curl_output | sed -e 's/HTTPSTATUS\:.*//g')
@@ -241,7 +289,7 @@ apps-details() {
                   # Retrieve the application ID
                   local retrieved_app_id=$(echo $app_query_response  | awk '{print $1;}' | cut -d "\"" -f 2)
                   
-                  local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.staging.luminatesite.com/v2/applications/$retrieved_app_id)
+                  local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.$luminate_url/v2/applications/$retrieved_app_id)
 
                   # extract the body
                   local response_body=$(echo $curl_output | sed -e 's/HTTPSTATUS\:.*//g')
@@ -255,7 +303,7 @@ apps-details() {
 
       elif [ "$app_id" != "<undefined>" ]; then      
 
-            local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.staging.luminatesite.com/v2/applications/$app_id)
+            local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.$luminate_url/v2/applications/$app_id)
 
             # extract the body
             local response_body=$(echo $curl_output | sed -e 's/HTTPSTATUS\:.*//g')
@@ -291,13 +339,23 @@ ssh-connect() {
                   client_token="${LUMINATE_SESSION_TOKEN}"
             fi   
       fi
-      
+
+      local luminate_url=${BASH_CLI_OPT_VALUE[12]}
+      if [ "$luminate_url" == "<undefined>" ]; then
+            if [[ -z "${LUMINATE_ENVIRONMENT_URL}" ]]; then
+                  echo Error: -U argument or LUMINATE_ENVIRONMENT_URL environment variable are required
+                  exit 1
+            else
+                  luminate_url="${LUMINATE_ENVIRONMENT_URL}"
+            fi   
+      fi
+
       local app_name=${BASH_CLI_OPT_VALUE[8]}
 
       if [ "$app_name" != "<undefined>" ]; then
 
             # Start by filtering for applications by name, and then reducing to exact name
-            local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.staging.luminatesite.com/v2/applications/?filter=$app_name)
+            local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.$luminate_url/v2/applications/?filter=$app_name)
 
             # extract the body
             local response_body=$(echo $curl_output | sed -e 's/HTTPSTATUS\:.*//g')
@@ -352,6 +410,7 @@ ssh-connect() {
 
       else
             echo Error: Application named required
+            exit 1
       fi
 
 }
@@ -372,12 +431,22 @@ tcp-connect() {
             fi   
       fi
       
+      local luminate_url=${BASH_CLI_OPT_VALUE[12]}
+      if [ "$luminate_url" == "<undefined>" ]; then
+            if [[ -z "${LUMINATE_ENVIRONMENT_URL}" ]]; then
+                  echo Error: -U argument or LUMINATE_ENVIRONMENT_URL environment variable are required
+                  exit 1
+            else
+                  luminate_url="${LUMINATE_ENVIRONMENT_URL}"
+            fi   
+      fi
+
       local app_name=${BASH_CLI_OPT_VALUE[8]}
 
       if [ "$app_name" != "<undefined>" ]; then
 
             # Start by filtering for applications by name, and then reducing to exact name
-            local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.staging.luminatesite.com/v2/applications/?filter=$app_name)
+            local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.$luminate_url/v2/applications/?filter=$app_name)
 
             # extract the body
             local response_body=$(echo $curl_output | sed -e 's/HTTPSTATUS\:.*//g')
@@ -399,7 +468,7 @@ tcp-connect() {
                   # Retrieve the application ID
                   local retrieved_app_id=$(echo $app_query_response  | awk '{print $1;}' | cut -d "\"" -f 2)
 
-                  local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.staging.luminatesite.com/v2/applications/$retrieved_app_id)
+                  local curl_output=$(curl -s -X GET --write-out "HTTPSTATUS:%{http_code}" --header "Content-Type: application/json" --header "Accept: application/json" --header "Authorization: Bearer $client_token"  https://api.$luminate_url/v2/applications/$retrieved_app_id)
 
                   # extract the body
                   local response_body=$(echo $curl_output | sed -e 's/HTTPSTATUS\:.*//g')
